@@ -98,9 +98,51 @@ df_train_raw = df_all[df_all['unique_id'].isin(train_peds)].copy()
 df_val_raw = df_all[df_all['unique_id'].isin(val_peds)].copy()
 df_test_raw = df_all[df_all['unique_id'].isin(test_peds)].copy()
 
-print("TRAIN:")
-print(df_train_raw.head())
-print("VAL:")
-print(df_val_raw.head())
-print("TEST:")
-print(df_test_raw.head())
+def create_sliding_windows(df, window_size=8, pred_steps=1):
+    frame_lookup = {}
+    for _, row in df.iterrows():
+        key = (row['scene'], row['frame_id'])
+        if key not in frame_lookup:
+            frame_lookup[key].append((
+                row['unique_id'],
+                row['pos_x'],
+                row['pos_y'],
+                row['vx'],
+                row['vy']
+            ))
+#Ovo pravi frame_lookup koji izgleda otprilike ovako, brojevi su naravno izmisljeni
+# {
+#     ('hotel', 100): [('hotel_1', 2.3, 4.5, 0.1, 0.2),
+#                      ('hotel_3', 3.1, 5.2, 0.0, 0.3)],
+
+#     ('hotel', 101): [('hotel_1', 2.4, 4.7, 0.1, 0.2)],
+
+#     ('univ', 100):  [('univ_5', 1.2, 3.4, 0.2, 0.1),
+#                      ('univ_9', 4.0, 2.1, 0.1, 0.0)],
+#     ...
+# }
+#Sadrzi sve pesake koji se nalaze u tom frejmu
+
+    rows = []
+
+    for ped_id, group in df.groupby('unique_id'):
+        group = group.sort_values('frame_id').reset_index(drop=True) # Znaci u grupi sortiramo pozicije pesaka po frejmu i resetujemo indekse da ponovo idu rastuce od 0
+        positions = group[['pos_x', 'pos_y']].values()               #.values() radi konverziju iz pandas DataFrame-a u numpy niz (ndarray), jer su operacija sa njime brze posebno indeksiranje koje koristimo u nadolazecim for petljama.
+        velocities = group[['vx', 'vy']].values()
+        frame_ids = group['frame_id'].values()
+        ped_scene = group['scene'].iloc[0]                          # Mozemo primetiti da je scena za svaki red ista jer se radi o istom pesaku, zato koristimo iloc[0] koji nam vraca vrednost prvog reda
+
+        min_required = window_size + pred_steps
+        if len(positions) < min_required:                           # Ako nemamo dovoljno frejmova zabelezenih o ovom pesaku, preskacemo ga
+            continue
+
+        
+        for i in range(len(positions) - window_size - pred_steps + 1): # Ovo je broj primera koji mozemo da izvucemo od jednog pesaka. 
+                                                                       #Pesak sa 20 frejmova, nama treba 8+5 frejmova, mozemo napraviti 20-8-5+1 = 8 primera
+            window = positions[i:i+window_size]
+            current_pos = window[-1]
+            current_vel = velocities[i+window_size-1]
+            current_frame = frame_ids[i+window_size-1]
+
+            row_data = {'unique_id': ped_id}
+            
