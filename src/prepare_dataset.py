@@ -103,6 +103,8 @@ def create_sliding_windows(df, window_size=8, pred_steps=1):
     for _, row in df.iterrows():
         key = (row['scene'], row['frame_id'])
         if key not in frame_lookup:
+            frame_lookup[key] = []
+
             frame_lookup[key].append((
                 row['unique_id'],
                 row['pos_x'],
@@ -127,9 +129,9 @@ def create_sliding_windows(df, window_size=8, pred_steps=1):
 
     for ped_id, group in df.groupby('unique_id'):
         group = group.sort_values('frame_id').reset_index(drop=True) # Znaci u grupi sortiramo pozicije pesaka po frejmu i resetujemo indekse da ponovo idu rastuce od 0
-        positions = group[['pos_x', 'pos_y']].values()               #.values() radi konverziju iz pandas DataFrame-a u numpy niz (ndarray), jer su operacija sa njime brze posebno indeksiranje koje koristimo u nadolazecim for petljama.
-        velocities = group[['vx', 'vy']].values()
-        frame_ids = group['frame_id'].values()
+        positions = group[['pos_x', 'pos_y']].values               #.values() radi konverziju iz pandas DataFrame-a u numpy niz (ndarray), jer su operacija sa njime brze posebno indeksiranje koje koristimo u nadolazecim for petljama.
+        velocities = group[['vx', 'vy']].values
+        frame_ids = group['frame_id'].values
         ped_scene = group['scene'].iloc[0]                          # Mozemo primetiti da je scena za svaki red ista jer se radi o istom pesaku, zato koristimo iloc[0] koji nam vraca vrednost prvog reda
 
         min_required = window_size + pred_steps
@@ -144,5 +146,91 @@ def create_sliding_windows(df, window_size=8, pred_steps=1):
             current_vel = velocities[i+window_size-1]
             current_frame = frame_ids[i+window_size-1]
 
-            row_data = {'unique_id': ped_id}
+            row_data = {'unique_id': ped_id}                            # Recnik koji gradimo feature po feature i na kraju dodamo u rows listu
+
+            # === Features: relativne koordinate (T-7 do T-1) ===
+            # [FIX] Petlja ide do window_size - 1 (dakle j = 0..6),
+            # čime preskačemo poslednji element prozora (T samu)
+            # jer je window[-1] - window[-1] = (0, 0) uvek.
+            # To su bile mrtve kolone rel_x_8 i rel_y_8.
+            # Sad imamo 14 relativnih koordinata umesto 16.
+
+            for j in range(window_size - 1):
+                rel_x = window[j][0] - current_pos[0]
+                rel_y = window[j][1] - current_pos[1]
+                row_data[f'rel_x_{j+1}'] = rel_x        #Levo-desno
+                row_data[f'rel_y_{j+1}'] = rel_y        #Napred-nazad
+            # === Socijalne feature: K=3 najbliža suseda ===
+            K = 3
+            # [FIX] Koristimo (ped_scene, current_frame) kao key,
+            # pa se nikad ne mešaju pešaci iz različitih scena.
+            lookup_key = (ped_scene, current_frame)
+            others = [p for p in frame_lookup.get(lookup_key, []) if p[0] != ped_id] #Others su svi ostali pesaci u tom frejmu
+
+            nn_features = np.zeros((K, 5))
+
+            if others:
+                other_data = np.array([ [p[1], p[2], p[3], p[4]] for p in others])  #Ovim pravimo np matricu sa kolonama pos_x, pos_y, vx, vy. Na njoj vektorski racunamo sve distance umesto u petlji
+                dx_all = other_data[:, 0] - current_pos[0]
+                dy_all = other_data[:, 1] - current_pos[1]
+                dvx_all = other_data[:, 2] - current_vel[0]
+                dvy_all = other_data[:, 3] - current_vel[1]
+                dists = np.sqrt(dx_all**2 + dy_all**2)
+
+                sorted_idx = np.argsort(dists)[:K]  #Na ovaj nacin pronalazimo K najbliza suseda
+                speed = np.sqrt(current_vel[0]**2 + current_vel[1]**2) #current_vel sadrzi vx,vy atribute naseg pesaka u sadasnjiem trenutku
+                
+                for k, idx in enumerate(sorted_idx):
+                    dx, dy = dx_all[idx], dy_all[idx]
+                    dvx, dvy = dvx_all[idx], dvy_all[idx]
+                    dist = dists[idx]
+                    approach = -(dx*dvx + dy*dvy) / dist if dist > 1e-6 else 0      #Ako su dva pesaka na istom mestu onda je approach nula, ali to bi bila samo neka greska najverovatnije
+                    
+                    if speed > 1e-6:
+                        dot = dx*current_vel[0] + dy*current_vel[1] #Ovaj proizvod govori nam da li je sused u pravcu kretanja
+                        in_front = dot / (speed * dist + 1e-6) #Posto dot nije normalizovan, deljenjem sa speed*dist dobijamo kosinus koji daje vrednosti u [-1,1]
+
+                    else:
+                        in_front = 0.0
+
+                    #Sada samo dodajemo ove atribute u promenljivu nn_features                   
+                    nn_features[k,0] = dx
+                    nn_features[k,1] = dy
+                    nn_features[k,2] = dvx
+                    nn_features[k,3] = dvy
+                    nn_features[k,4] = approach * max(0.0, in_front)
+                    
             
+            #Atribute dodajemo u row_data, rekli smo da je to recnik koji gradimo feature po feature
+            for k in range(K):
+                row_data[f'nn_{k+1}_dx']        = nn_features[k,0]
+                row_data[f'nn_{k+1}_dy']        = nn_features[k,1]
+                row_data[f'nn_{k+1}_dvx']       = nn_features[k,2]
+                row_data[f'nn_{k+1}_dvy']       = nn_features[k,3]
+                row_data[f'nn_{k+1}_approach']  = nn_features[k,4]
+           
+            # === Targeti: relativna pomeranja u narednih PRED_STEPS koraka ===
+            for step in range(pred_steps):
+                target_pos = positions[i + window_size + step]
+                row_data[f'delta_x_{step+1}'] = target_pos[0] - current_pos[0]
+                row_data[f'delta_y_{step+1}'] = target_pos[1] - current_pos[1]
+            
+            rows.append(row_data) #Na ovaj nacin smo dodali jedan red za pesaka sa svim novim atributima dobijenim kroz Sliding WIndow tehniku
+        
+    return pd.DataFrame(rows)
+    
+print("Primenjujem sliding window na train skup...")
+df_train = create_sliding_windows(df_train_raw, WINDOW_SIZE, PRED_STEPS)
+print("Primenjujem sliding window na validation skup...")
+df_val = create_sliding_windows(df_val_raw, WINDOW_SIZE, PRED_STEPS)
+print("Primenjujem sliding window na train skup...")
+df_test = create_sliding_windows(df_test_raw, WINDOW_SIZE, PRED_STEPS)
+
+print(f"\n{'='*60}")
+print(f"REZULTATI NAKON SLIDING WINDOW (N={WINDOW_SIZE})")
+print(f"{'='*60}")
+print(f"Train primeri: {len(df_train)}")
+print(f"Val primeri:   {len(df_val)}")
+print(f"Test primeri:  {len(df_test)}")
+print(f"Ukupno primera: {len(df_train) + len(df_val) + len(df_test)}")
+
