@@ -261,6 +261,7 @@ df_train.to_csv(os.path.join(OUTPUT_DIR, 'train.csv'), index=False)
 df_val.to_csv(os.path.join(OUTPUT_DIR, 'val.csv'), index=False)
 df_test.to_csv(os.path.join(OUTPUT_DIR, 'test.csv'), index=False)
 
+#Sada cuvamo .npy fajlove zato sto su mnogo brzi za ucitavanje i spremni su za ML pipeline, dok su .csv fajlovi namenjeni laksem iscitavanju dataseta od strane coveka
 np.save(os.path.join(OUTPUT_DIR, 'X_train.npy'), df_train[feature_cols].values)
 np.save(os.path.join(OUTPUT_DIR, 'y_train.npy'), df_train[target_cols].values)
 np.save(os.path.join(OUTPUT_DIR, 'X_val.npy'),   df_val[feature_cols].values)
