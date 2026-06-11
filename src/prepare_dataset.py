@@ -234,3 +234,42 @@ print(f"Val primeri:   {len(df_val)}")
 print(f"Test primeri:  {len(df_test)}")
 print(f"Ukupno primera: {len(df_train) + len(df_val) + len(df_test)}")
 
+# =========================================
+# CUVANJE
+# =========================================
+
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+EFFECTIVE_WINDOW = WINDOW_SIZE - 1
+K = 3
+
+feature_cols = (
+    [f'rel_x_{j+1}' for j in range(EFFECTIVE_WINDOW)] + #7
+    [f'rel_y_{j+1}' for j in range(EFFECTIVE_WINDOW)] + #7
+    [f'nn_{k+1}_{feat}' for k in range(K)
+    for feat in ['dx', 'dy', 'dvx', 'dvy', 'approach']] # 15
+)   #ukupno: 14 + 15 = 29
+
+target_cols = (
+    [f'delta_x_{s+1}' for s in range(PRED_STEPS)] +
+    [f'delta_y_{s+1}' for s in range(PRED_STEPS)]
+)
+
+print(f"Broj features: {len(feature_cols)} ({K*5} = {K}*5 KNN + 14 rel = {14 + K*5})")
+
+df_train.to_csv(os.path.join(OUTPUT_DIR, 'train.csv'), index=False)
+df_val.to_csv(os.path.join(OUTPUT_DIR, 'val.csv'), index=False)
+df_test.to_csv(os.path.join(OUTPUT_DIR, 'test.csv'), index=False)
+
+np.save(os.path.join(OUTPUT_DIR, 'X_train.npy'), df_train[feature_cols].values)
+np.save(os.path.join(OUTPUT_DIR, 'y_train.npy'), df_train[target_cols].values)
+np.save(os.path.join(OUTPUT_DIR, 'X_val.npy'),   df_val[feature_cols].values)
+np.save(os.path.join(OUTPUT_DIR, 'y_val.npy'),   df_val[target_cols].values)
+np.save(os.path.join(OUTPUT_DIR, 'X_test.npy'),  df_test[feature_cols].values)
+np.save(os.path.join(OUTPUT_DIR, 'y_test.npy'),  df_test[target_cols].values)
+
+print(f"\n{'='*60}")
+print(f"✅ Dataset sačuvan u '{OUTPUT_DIR}'")
+print(f"{'='*60}")
+print(f"X_train shape: {df_train[feature_cols].values.shape}")
+print(f"y_train shape: {df_train[target_cols].values.shape}")
