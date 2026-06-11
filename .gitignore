@@ -1,0 +1,41 @@
+# ============================================
+# Generisani podaci (regenerišu se iz src/prepare_dataset.py)
+# ============================================
+data/processed/
+
+# Sirovi podaci (data/raw/) se ZADRŽAVAJU u repou —
+# ETH dataset je javan i mali, repo je tako samodovoljan.
+
+# ============================================
+# Rezultati (regenerišu se pokretanjem skripti)
+# ============================================
+results/
+!results/eda/
+# ============================================
+# Python
+# ============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# uv / virtuelna okruženja
+.venv/
+venv/
+env/
+# Napomena: uv.lock SE komituje (zaključava verzije) — ne ignoriši ga
+
+# ============================================
+# IDE / Editor
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ============================================
+# OS
+# ============================================
+.DS_Store
+Thumbs.db
