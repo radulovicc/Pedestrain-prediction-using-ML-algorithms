@@ -2,7 +2,7 @@
 # HIPERPARAMETRI
 # ============================
 
-WINDOW_SIZE = 8            # Broj prethodnih pozicija koje gledamo
+WINDOW_SIZE = 5           # Broj prethodnih pozicija koje gledamo
 PRED_STEPS = 5             # koliko frejmova unapred zelimo da predvidjamo
 
 # ============================
