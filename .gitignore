@@ -14,11 +14,13 @@ wheels/
 # Data
 # sirovi ETH podaci OSTAJU u repou (mali su, repo je samodovoljan)
 # obradjeni se regenerisu pokretanjem prepare_dataset.py
-data/processed/*.csv
-data/processed/*.npy
+data/processed/**
+!data/processed/.gitkeep
 
 # Results — ignorisemo sve OSIM grafika za odbranu
-results/
+# Results — ignorisi sve OSIM za_odbranu grafika
+results/**
+!results/
 !results/models/
 !results/models/za_odbranu/
 !results/models/za_odbranu/**
@@ -28,7 +30,6 @@ results/
 .idea/
 
 # ML modeli
-models/
 *.joblib
 *.pkl
 

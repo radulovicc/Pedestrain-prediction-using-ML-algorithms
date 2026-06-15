@@ -51,7 +51,7 @@ Tuning hiperparametara se radi na **validacionom** skupu; test skup se koristi s
 │   │   ├── random_forest.py
 │   │   └── xgb_model.py
 │   ├── advanced_evaluation.py        # Analiza grešaka po tipu putanje
-│   └── vizuelizacija_za_odbranu.py   # Grafici za odbranu
+│   └── vizuelizacija.py   # Grafici za odbranu
 └── results/
     └── models/
         ├── baseline/window_{N}/
