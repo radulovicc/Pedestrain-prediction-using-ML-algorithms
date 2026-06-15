@@ -1,43 +1,36 @@
-# ============================================
-# Generisani podaci (regenerišu se iz src/prepare_dataset.py)
-# ============================================
-data/processed/*
-!data/processed/.gitkeep
-
-# Sirovi podaci (data/raw/) se ZADRŽAVAJU u repou —
-# ETH dataset je javan i mali, repo je tako samodovoljan.
-
-# ============================================
-# Rezultati (regenerišu se pokretanjem skripti)
-# ============================================
-results/
-!results/eda/
-!results/models/za_odbranu
-# ============================================
-# Python
-# ============================================
+# Python-generated files
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.py[oc]
+*.pyc
+build/
+dist/
+wheels/
+*.egg-info
 
-# uv / virtuelna okruženja
-.venv/
-venv/
-env/
-# Napomena: uv.lock SE komituje (zaključava verzije) — ne ignoriši ga
+# Virtual environments
+.venv
+.env
 
-# ============================================
-# IDE / Editor
-# ============================================
+# Data
+# sirovi ETH podaci OSTAJU u repou (mali su, repo je samodovoljan)
+# obradjeni se regenerisu pokretanjem prepare_dataset.py
+data/processed/*.csv
+data/processed/*.npy
+
+# Results — ignorisemo sve OSIM grafika za odbranu
+results/
+!results/models/
+!results/models/za_odbranu/
+!results/models/za_odbranu/**
+
+# IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 
-# ============================================
-# OS
-# ============================================
-.DS_Store
-Thumbs.db
+# ML modeli
+models/
+*.joblib
+*.pkl
+
+# Dokumentacija (radni materijal)
+docs/
