@@ -1,7 +1,8 @@
 # ============================================
 # Generisani podaci (regenerišu se iz src/prepare_dataset.py)
 # ============================================
-data/processed/
+data/processed/*
+!data/processed/.gitkeep
 
 # Sirovi podaci (data/raw/) se ZADRŽAVAJU u repou —
 # ETH dataset je javan i mali, repo je tako samodovoljan.
