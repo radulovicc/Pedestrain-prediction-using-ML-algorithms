@@ -374,3 +374,61 @@ print(f"  -> Metrike sacuvane: {OUTPUT_DIR}/napredne_metrike.csv")
 print(f"\n{'='*70}")
 print(" KRAJ NAPREDNE EVALUACIJE")
 print("=" * 70)
+
+"""
+ZAKLJUČAK — Napredna evaluacija (window=8, 622 test uzorka)
+
+FINALNO POREĐENJE (ADE / FDE):
+  Baseline:       0.8922 / 1.7374   <- naivni (ponovi poslednji pomeraj)
+  OLS:            0.1876 / 0.3304   <- najbolji ADE
+  XGBoost:        0.1890 / 0.3275   <- najbolji FDE
+  Random Forest:  0.1939 / 0.3297
+
+GLAVNI NALAZI:
+
+1. Svi učeni modeli ubedljivo imaju bolji rezultat od baseline-a (~4.7x bolji ADE).
+   Baseline ADE 0.89 vs OLS/XGB/RF ~0.19. Dakle modeli zaista uče korisnu
+   strukturu kretanja, a ne samo produžavaju poslednji pomeraj. Ovo je važno
+   pokazati — dokazuje da problem nije trivijalan i da modeli imaju vrednost.
+
+2. OLS, XGBoost i RF se prakticno ni ne razlikuju mnogo.
+   Sva tri u opsegu ADE 0.188-0.194 (razlika ispod 3%, par milimetara).
+   Potvrda glavne teze: problem je suštinski linearan, pa složeniji modeli
+   ne donose prednost u proseku.
+
+3. Cela greška dolazi iz oštrih skretanja.
+   Podela test skupa po tipu putanje:
+     Prava linija (55.5%):  ADE ~0.10-0.11   <- svi modeli odlični
+     Blago skretanje (38.7%): ADE ~0.25-0.26
+     Oštro skretanje (5.8%):  ADE ~0.50-0.60  <- 5x veća greška!
+   Samo 5.8% primera (oštra skretanja) nosi najveći deo ukupne greške.
+   Na pravoj liniji su svi modeli skoro identični jer je tamo problem
+   savršeno linearan.
+
+4. Gde se modeli razlikuju — na skretanjima.
+   Prava linija:  OLS najbolji (0.0949) — problem je tu linearan, linearni model pobeđuje.
+   Oštro skretanje:  XGB/RF bolji (0.505/0.509) vs OLS (0.599) — ~16% bolji.
+   Dakle tree modeli opravdavaju postojanje samo na nelinearnim slučajevima,
+   ali pošto ih je malo (5.8%), prednost se ponistava u ukupnom proseku.
+
+5. Distribucija grešaka:
+   XGBoost: median FDE 0.23m, ali max 2.19m. 95% uzoraka ima FDE < 0.97m,
+   99% < 1.35m. Većina predikcija je odlična; mali rep teških slučajeva
+   (nagla, nepredvidiva skretanja) diže prosek.
+
+6. Greška raste sa horizontom (akumulacija).
+   XGBoost mean po koraku: 0.064 → 0.119 → 0.181 → 0.253 → 0.328.
+   P99 raste još brže (0.27 → 2.19 max), tj. rep se širi sa svakim korakom.
+   Što dalje predviđamo, to nesigurnije — i to neravnomerno (oštra skretanja
+   postaju sve nepredvidivija).
+
+ZAKLJUČAK:
+Za predikciju kretanja pešaka na ~2s horizonta, linearni i nelinearni modeli
+daju gotovo identičan rezultat (~0.19m ADE) jer 94% kretanja je pravolinijsko
+ili blago zakrivljeno — dakle linearno. Tree modeli (XGB, RF) pokazuju malu
+prednost (~16%) samo na oštrim skretanjima (5.8% primera), ali ta prednost se
+gubi u proseku. Glavni izvor greške svih modela je ona mala grupa naglih,
+nepredvidivih skretanja koja se ne mogu predvideti iz same istorije kretanja —
+za njih bi bili potrebni bogatiji modeli (Social LSTM/Transformer) i više
+podataka o retkim manevrima.
+"""
