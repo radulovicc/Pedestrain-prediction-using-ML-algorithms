@@ -51,7 +51,12 @@ Tuning hiperparametara se radi na **validacionom** skupu; test skup se koristi s
 │   │   ├── random_forest.py
 │   │   └── xgb_model.py
 │   ├── advanced_evaluation.py        # Analiza grešaka po tipu putanje
-│   └── vizuelizacija.py   # Grafici za odbranu
+│   ├── feature_selection.py          # Poređenje: svi featurei vs samo rel
+│   ├── export_model.py               # Trening + eksport finalnog modela
+│   └── vizuelizacija.py              # Grafici za odbranu
+├── deployment/
+│   ├── api.py                        # FastAPI servis + vizuelni UI
+│   └── model.joblib                  # Eksportovani model (generiše export_model.py)
 └── results/
     └── models/
         ├── baseline/window_{N}/
@@ -85,12 +90,31 @@ uv run src/models/linear_regression.py
 uv run src/models/random_forest.py
 uv run src/models/xgb_model.py
 
-# 3. Evaluacija i vizualizacija
+# 3. Evaluacija, odabir atributa i vizualizacija
 uv run src/advanced_evaluation.py
-uv run src/vizuelizacija_za_odbranu.py
+uv run src/feature_selection.py
+uv run src/vizuelizacija.py
 ```
 
 Da bi se dobili rezultati za drugu dužinu istorije, promeni `WINDOW_SIZE` u `src/config.py` i ponovi ceo pipeline od koraka 1.
+
+## Deployment (API)
+
+Finalni model (XGBoost, samo rel koordinate) eksportuje se i izlaže kroz FastAPI servis.
+
+```bash
+# 1. Istreniraj i eksportuj model
+uv run src/export_model.py
+
+# 2. Pokreni API
+uv run uvicorn deployment.api:app --reload
+```
+
+Dostupne adrese:
+- `http://127.0.0.1:8000/ui` — vizuelni interfejs: klikom se crta istorija kretanja, model prikazuje predikciju
+- `http://127.0.0.1:8000/docs` — Swagger dokumentacija (REST endpoint `/predict`)
+
+Endpoint `/predict` prima relativne koordinate istorije i vraća predviđenih narednih 5 pomeraja (delta_x, delta_y po koraku).
 
 ## Metrike
 
